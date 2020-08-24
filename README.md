@@ -2,6 +2,14 @@
 
 CLI application for generating [Anki](https://ankiweb.net/) flash cards and [Taskwarrior](https://taskwarrior.org/) tasks from Markdown files.
 
+## Installation
+
+```bash
+git clone https://github.com/kpence/noteman
+cd noteman
+pip3 install -r requirements.txt
+```
+
 ## Usage
 
 ```bash
