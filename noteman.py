@@ -74,6 +74,7 @@ class yaml_builder():
         try:
             yml = yaml.safe_load(self.yaml)
         except:
+            # TODO I need to allow HTML text, which fails to be a YAML file so maybe it should work
             print(str(sys.exc_info()))
             print("Failed YAML: {\n",self.yaml, "\n}")
         if yml is None:
@@ -126,6 +127,8 @@ class tasks_command():
                 print('ERROR output:', resp.stderr)
         return self
     def add_yaml(self, yml):
+        if type(yml) is not dict:
+            return self
         for project_name,project in yml.items():
             if 'tasks' in project:
                 for task in project['tasks']:
