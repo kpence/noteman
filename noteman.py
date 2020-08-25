@@ -71,7 +71,11 @@ class yaml_builder():
             self.yaml += unindent(s) + '\n'
         return self
     def build(self):
-        yml = yaml.safe_load(self.yaml)
+        try:
+            yml = yaml.safe_load(self.yaml)
+        except:
+            print(str(sys.exc_info()))
+            print("Failed YAML: {\n",self.yaml, "\n}")
         if yml is None:
             return self
         if 'metadata' in yml:
