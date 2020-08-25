@@ -8,6 +8,8 @@ import glob
 import genanki
 import random
 
+ignored_text = ['/br','br/']
+
 def extract_delimited_text(base_str, open_c='{', close_c='}'):
     extracted_texts = []
     num_unclosed_c = 0
@@ -27,7 +29,9 @@ def extract_delimited_text(base_str, open_c='{', close_c='}'):
             num_unclosed_c += 1
         elif c == close_c:
             if num_unclosed_c == 1:
-                extracted_texts.append(base_str[(previous_index+1):ci])
+                text = base_str[(previous_index+1):ci]
+                if text not in ignored_text:
+                    extracted_texts.append(text)
             if num_unclosed_c > 0:
                 num_unclosed_c -= 1
     return extracted_texts
@@ -132,7 +136,7 @@ class tasks_command():
         for project_name,project in yml.items():
             if 'tasks' in project:
                 for task in project['tasks']:
-                    #print(task)
+                    print(task)
                     self.add_task(project_name, task)
         return self
     def invoke(self):
