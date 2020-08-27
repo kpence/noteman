@@ -15,6 +15,7 @@ pip3 install -r requirements.txt
 ```bash
 python3 noteman.py *.md
 python3 noteman.py file1.md file2.md file3.md directory/*.md
+python3 noteman.py -o /path/to/anki-deck-directory *.md
 ```
 
 ## Anki Deck example
