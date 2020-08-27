@@ -25,6 +25,7 @@ file1.md:
 ```
 Info Retrieval and Storage
 {
+
   metadata:
     deck: 'CS::Info Retrieval and Storage'
     filename: 'info-retrieval'

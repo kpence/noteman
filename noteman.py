@@ -76,7 +76,7 @@ class yaml_builder():
         except:
             print(sys.exc_info())
             print('Failed to open: ',fn)
-            sys.exit()
+            sys.exit(1)
         for s in self.extractor(s, open_s=self.delims[0], close_s=self.delims[1]):
             self.yaml += unindent(s) + '\n'
         return self
