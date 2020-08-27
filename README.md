@@ -20,7 +20,7 @@ python3 noteman.py -o /path/to/anki-deck-directory *.md
 
 ## Anki Deck example
 
-To define Anki cards in your markdown file, write the configurations in YAML format enclosed in `{ }` curly brackets.
+To define Anki cards in your markdown file, write the configurations in YAML format enclosed in code-blocks tagged with `a`.
 
 file1.md:
 ```
