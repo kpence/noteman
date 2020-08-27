@@ -10,32 +10,34 @@ import random
 
 ignored_text = ['/br','br/']
 
-def extract_delimited_text(base_str, open_c='{', close_c='}'):
+def extract_delimited_text(base_str, open_s='```open', close_s='```'):
     extracted_texts = []
     num_unclosed_c = 0
     previous_index = 0
 
     # If invalid arguments (must be 1 character)
-    if len(open_c) != 1 or len(close_c) != 1:
+    if len(open_s) == 0 or len(close_s) == 0:
         return None
-    if open_c == close_c:
+    if open_s == close_s:
         return None
 
     for ci in range(len(base_str)):
-        c = base_str[ci]
-        if c == open_c:
-            if num_unclosed_c == 0:
-                previous_index = ci
-            num_unclosed_c += 1
-        elif c == close_c:
-            if num_unclosed_c == 1:
-                text = base_str[(previous_index+1):ci]
-                if text not in ignored_text:
-                    if text[-1] != '\n':
-                        text += '\n'
-                    extracted_texts.append(text)
-            if num_unclosed_c > 0:
-                num_unclosed_c -= 1
+        try:
+            if base_str[ci:(ci+len(open_s))] == open_s:
+                if num_unclosed_c == 0:
+                    previous_index = ci
+                num_unclosed_c += 1
+            elif base_str[ci:(ci+len(close_s))] == close_s:
+                if num_unclosed_c == 1:
+                    text = base_str[(previous_index+len(open_s)):ci]
+                    if text not in ignored_text:
+                        if text[-1] != '\n':
+                            text += '\n'
+                        extracted_texts.append(text)
+                if num_unclosed_c > 0:
+                    num_unclosed_c -= 1
+        except IndexError:
+            pass
     return extracted_texts
 
 def unindent(s):
@@ -52,8 +54,6 @@ def unindent(s):
 
 class metadata():
     def __init__(self, dct):
-        if 'metadata' in dct:
-            dct = dct['metadata']
         self.dict = dct
     def __getattr__(self, key):
         if key not in self.dict:
@@ -65,7 +65,6 @@ class yaml_builder():
         self.yaml = "\n"
         self.result = None
         self.extractor = extractor
-        self.metadata = None
         self.delims = delims
     def add_files(self,files):
         for fn in files.split(' '):
@@ -78,7 +77,7 @@ class yaml_builder():
             print(sys.exc_info())
             print('Failed to open: ',fn)
             sys.exit()
-        for s in self.extractor(s, open_c=self.delims[0], close_c=self.delims[1]):
+        for s in self.extractor(s, open_s=self.delims[0], close_s=self.delims[1]):
             self.yaml += unindent(s) + '\n'
         return self
     def build(self):
@@ -90,13 +89,8 @@ class yaml_builder():
             print("Failed YAML: {\n",self.yaml, "\n}")
         if yml is None:
             return self
-        if 'metadata' in yml:
-            self.metadata = metadata(yml['metadata'])
-            del yml['metadata']
         self.result = yml
         return self
-    def get_metadata(self):
-        return self.metadata
     def get_result(self):
         return self.result
 
@@ -185,9 +179,12 @@ class deck_builder():
         self.notes.append(note)
         return self
     def add_yaml(self, yml):
-        for question,answer in yml.items():
-            self.add_note(question,answer)
-        return self
+        try:
+            for question,answer in yml.items():
+                self.add_note(question,answer)
+            return self
+        except:
+            print(sys.exc_info(), yml)
     def write_to_file(self, fn):
         if len(fn) < 6 or fn[-5:] != '.apkg':
             fn += '.apkg'
@@ -201,6 +198,7 @@ if __name__ == '__main__':
         print('Usage: noteman [-o output file] [file ...]')
         sys.exit(2)
 
+    print(sys.argv, "\n\n")
     if len(optlist) == 1:
         file_path = optlist[0][1]
     else:
@@ -211,14 +209,16 @@ if __name__ == '__main__':
     else:
         input_files = ' '.join(args).strip()
 
+    # Get the metadat
+    md = metadata(yaml_builder(delims=['```metadata','```']).add_files(input_files).build().get_result())
+    assert md is not None and md != {}, 'No metadata found!'
+
     # Build the flash cards yaml with metadata
-    yb = yaml_builder().add_files(input_files).build()
-    md = yb.get_metadata()
-    assert md is not None, 'No metadata found!'
+    yb = yaml_builder(delims=['```a','```']).add_files(input_files).build()
     yml = yb.get_result()
 
     # Build tasks yaml
-    tasks_yb = yaml_builder(delims=['<','>']).add_files(input_files).build()
+    tasks_yb = yaml_builder(delims=['```t','```']).add_files(input_files).build()
     tasks_yml = tasks_yb.get_result()
     if tasks_yml is not None:
         tc = tasks_command(md.label).add_yaml(tasks_yml).invoke()
@@ -228,18 +228,21 @@ if __name__ == '__main__':
     # Create the anki deck
 
     # Check if file_path points to a directory
-    if file_path is not None:
-        if os.path.isdir(file_path):
-            if file_path[-1] != '/':
-                file_path += '/'
-            file_path += md.filename
-    fn = md.filename if file_path is None else file_path
-    db = deck_builder().add_yaml(yml)
+    if yml is not None:
+        if file_path is not None:
+            if os.path.isdir(file_path):
+                if file_path[-1] != '/':
+                    file_path += '/'
+                file_path += md.filename
+        fn = md.filename if file_path is None else file_path
+        db = deck_builder().add_yaml(yml)
 
-    # Print the information
-    print()
-    print(f"Created Deck with {len(db.notes)} Flashcards:")
+        # Print the information
+        print()
+        print(f"Created Deck with {len(db.notes)} Flashcards:")
 
-    deck_id,deck_name = db.build_deck(deck_name=md.deck)
-    db.write_to_file(fn)
-    print(f"Successfully saved anki deck (id: {deck_id}, name: '{deck_name}') to file '{fn}'")
+        deck_id,deck_name = db.build_deck(deck_name=md.deck)
+        db.write_to_file(fn)
+        print(f"Successfully saved anki deck (id: {deck_id}, name: '{deck_name}') to file '{fn}'")
+    else:
+        print(f"No anki deck defined in files.")
