@@ -72,7 +72,12 @@ class yaml_builder():
             self.add_file(fn)
         return self
     def add_file(self,fn):
-        s = open(fn,'r').read()
+        try:
+            s = open(fn,'r').read()
+        except:
+            print(sys.exc_info())
+            print('Failed to open: ',fn)
+            sys.exit()
         for s in self.extractor(s, open_c=self.delims[0], close_c=self.delims[1]):
             self.yaml += unindent(s) + '\n'
         return self
