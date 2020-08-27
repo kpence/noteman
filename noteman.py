@@ -61,7 +61,7 @@ class metadata():
         return self.dict[key]
 
 class yaml_builder():
-    def __init__(self, extractor=extract_delimited_text, delims=['{','}']):
+    def __init__(self, extractor=extract_delimited_text, delims=['```open','```']):
         self.yaml = "\n"
         self.result = None
         self.extractor = extractor
@@ -84,7 +84,6 @@ class yaml_builder():
         try:
             yml = yaml.safe_load(self.yaml)
         except:
-            # TODO I need to allow HTML text, which fails to be a YAML file so maybe it should work
             print(str(sys.exc_info()))
             print("Failed YAML: {\n",self.yaml, "\n}")
         if yml is None:
