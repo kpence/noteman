@@ -24,24 +24,24 @@ To define Anki cards in your markdown file, write the configurations in YAML for
 file1.md:
 ```
 Info Retrieval and Storage
-{
-
-  metadata:
-    deck: 'CS::Info Retrieval and Storage'
-    filename: 'info-retrieval'
-}
+\```metadata
+  deck: 'CS::Info Retrieval and Storage'
+  filename: 'info-retrieval'
+\```
+% Note: In the real file, ignore the backslash.
 
 ...
 
 Different forms of IR models
 
-{
+\```a
   IR: Information retrieval
   Boolean retrieval model: Simple keyword style of info retrieval based on boolean logic
   Extended boolean retrieval model: 
   Vector space model: 
   Index term: a word or expression which may be stemmed, e.g. a keyword given for a journal article
-}
+\```
+% Note: In the real file, ignore the backslash.
 
 
 ```
@@ -57,19 +57,19 @@ file1.md:
 ```
 Accounting Class
 --
-{
-  metadata:
+%```metadata:
     label: 'accounting'
-}
+%```
 
 Week 1 homework:
-<
+%```t
 Week1:
   notes: Assigned reading
   tasks:
     - 'due:2020-08-24 Read pages 120-150'
+%```
+% Note: In the real file, ignore the backslash.
 ```
->
 
 Then to add the task to your Taskwarrior tasks:
 ```bash
