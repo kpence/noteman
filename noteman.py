@@ -31,6 +31,8 @@ def extract_delimited_text(base_str, open_c='{', close_c='}'):
             if num_unclosed_c == 1:
                 text = base_str[(previous_index+1):ci]
                 if text not in ignored_text:
+                    if text[-1] != '\n':
+                        text += '\n'
                     extracted_texts.append(text)
             if num_unclosed_c > 0:
                 num_unclosed_c -= 1
