@@ -11,12 +11,11 @@ import random
 #ignored_text = ['/br','br/']
 ignored_text = []
 
-
 def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=lambda agg,x,_,__: agg.append(x), end='\n'):
     open_s = delims[0]
     close_s = delims[1]
     extracted_texts = []
-    num_unclosed_c = 0
+    delimited_depth = 0
     previous_index = 0
 
     # If invalid arguments (must be 1 character)
@@ -27,30 +26,36 @@ def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=l
 
     for ci in range(len(base_str)):
         try:
-            if base_str[ci:(ci+len(open_s))] == open_s:
-                if num_unclosed_c == 0:
+            if open_s == base_str[ci:(ci+len(open_s))]:
+                if delimited_depth == 0:
                     previous_index = ci
-                num_unclosed_c += 1
-            elif base_str[ci:(ci+len(close_s))] == close_s:
-                if num_unclosed_c == 1:
+                delimited_depth += 1
+
+            elif close_s == base_str[ci:(ci+len(close_s))]:
+                if delimited_depth == 1:
                     text = base_str[(previous_index+len(open_s)):ci]
                     if text not in ignored_text:
                         if end is not None and text[-1] != end:
                             text += end
+
                         # A reduce function
                         apply_to_texts(extracted_texts,text, previous_index, ci)
-                if num_unclosed_c > 0:
-                    num_unclosed_c -= 1
+
+                if delimited_depth > 0:
+                    delimited_depth -= 1
         except IndexError:
             pass
-    return extracted_texts
 
+    # If multiple optional delimiters, then call this function recursively for each.
+    if len(delims) >= 4:
+        extracted_texts.extend(extract_delimited_text(base_str, delims=delims[2:], apply_to_texts=apply_to_texts, end=end))
+
+    return extracted_texts
 
 def extract_delimited_text_and_convert_media_links(base_str, delims=['```open','```'], new_media_delims=['<<','>>']):
     apply_to_texts = get_replace_delimiters_wrapper(new_delims=new_media_delims)
     converted_text = extract_delimited_text(base_str, delims=delims, apply_to_texts=apply_to_texts)
     return converted_text
-
 
 def get_replace_delimiters_wrapper(new_delims, original_delims=['![[',']]']):
     def apply_to_texts(agg, text, _, __):
@@ -86,6 +91,7 @@ def unindent(s):
     res = '\n'.join([ss[indent:] for ss in s.split('\n')])
     return res
 
+
 class metadata():
     def __init__(self, dct):
         self.dict = dct
@@ -93,6 +99,7 @@ class metadata():
         if key not in self.dict:
             return 'Unknown'
         return self.dict[key]
+
 
 class yaml_builder():
     def __init__(self, extractor=extract_delimited_text, delims=['```open','```']):
@@ -261,7 +268,7 @@ if __name__ == '__main__':
     assert md is not None and md != {}, 'No metadata found!'
 
     # Build the flash cards yaml with metadata
-    yb = yaml_builder(delims=['```a','```'], extractor=extract_delimited_text_and_convert_media_links).add_files(input_files).build()
+    yb = yaml_builder(delims=['```a','```','{{{a','}}}'], extractor=extract_delimited_text_and_convert_media_links).add_files(input_files).build()
     yml = yb.get_result()
 
     # Build tasks yaml

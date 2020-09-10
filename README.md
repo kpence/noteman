@@ -20,7 +20,7 @@ python3 noteman.py -o /path/to/anki-deck-directory *.md
 
 ## Anki Deck example
 
-To define Anki cards in your markdown file, write the configurations in YAML format enclosed in code-blocks tagged with `a`.
+To define Anki cards in your markdown file, write the configurations in YAML format enclosed in code-blocks tagged with `a`, or delimited between `{{{a` and `}}}`*.
 
 file1.md:
 ```
@@ -39,9 +39,14 @@ Different forms of IR models
   IR: Information retrieval
   Boolean retrieval model: Simple keyword style of info retrieval based on boolean logic
   Extended boolean retrieval model: 
+\```
+
+Or with brackets:
+{{{a
   Vector space model: 
   Index term: a word or expression which may be stemmed, e.g. a keyword given for a journal article
-\```
+}}}
+
 % Note: In the real file, ignore the backslash.
 
 
@@ -76,3 +81,6 @@ Then to add the task to your Taskwarrior tasks:
 ```bash
 python3 noteman.py file1.md
 ```
+
+
+Footnote: The reason for alternative brackets delimiters is so that you can see the images in Obsidian's markdown viewer.
