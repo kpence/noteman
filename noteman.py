@@ -46,26 +46,29 @@ def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=l
     return extracted_texts
 
 
-def extract_delimited_text_and_convert_media_links(base_str,
-        delims=['```open', '```'],
-        original_media_delims=['![[',']]'],
-        new_media_delims=['<img src="','">']):
+def extract_delimited_text_and_convert_media_links(base_str, delims=['```open','```'], media_path='./'):
+    new_media_delims = ['<img src="','">']
+    apply_to_texts = get_replace_delimiters_wrapper(new_delims=new_media_delims)
+    converted_text = extract_delimited_text(base_str, delims=delims, apply_to_texts=apply_to_texts)
+    return converted_text
 
+
+def get_replace_delimiters_wrapper(original_delims=['![[',']]'], new_delims=['<img src="','">']):
     def apply_to_texts(agg, text, _, __):
-        media_link_indices = extract_delimited_text(text,
-            delims=original_media_delims,
+        indices = extract_delimited_text(text,
+            delims=original_delims,
             apply_to_texts=lambda agg,_,i,j: agg.append((i,j)))
 
         previous_index = 0
-        for start, close in media_link_indices:
+        for start, close in indices:
             agg.append(text[previous_index:start]
-                + new_media_delims[0]
-                + text[(start+len(original_media_delims[0])):close]
-                + new_media_delims[1])
+                + new_delims[0]
+                + text[(start+len(original_delims[0])):close]
+                + new_delims[1])
+            previous_index = close+len(original_delims[1])
         return agg
 
-    converted_text = extract_delimited_text(base_str, delims=delims, apply_to_texts=apply_to_texts)
-    return converted_text
+    return apply_to_texts
 
 
 def unindent(s):
