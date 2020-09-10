@@ -12,7 +12,7 @@ import random
 ignored_text = []
 
 
-def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=lambda agg,x,_,__: agg.append(x)):
+def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=lambda agg,x,_,__: agg.append(x), end='\n'):
     open_s = delims[0]
     close_s = delims[1]
     extracted_texts = []
@@ -35,8 +35,8 @@ def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=l
                 if num_unclosed_c == 1:
                     text = base_str[(previous_index+len(open_s)):ci]
                     if text not in ignored_text:
-                        if text[-1] != '\n':
-                            text += '\n'
+                        if end is not None and text[-1] != end:
+                            text += end
                         # A reduce function
                         apply_to_texts(extracted_texts,text, previous_index, ci)
                 if num_unclosed_c > 0:
@@ -46,26 +46,29 @@ def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=l
     return extracted_texts
 
 
-def extract_delimited_text_and_convert_media_links(base_str, delims=['```open','```'], media_path='./'):
-    new_media_delims = ['<img src="','">']
+def extract_delimited_text_and_convert_media_links(base_str, delims=['```open','```'], new_media_delims=['<<','>>']):
     apply_to_texts = get_replace_delimiters_wrapper(new_delims=new_media_delims)
     converted_text = extract_delimited_text(base_str, delims=delims, apply_to_texts=apply_to_texts)
     return converted_text
 
 
-def get_replace_delimiters_wrapper(original_delims=['![[',']]'], new_delims=['<img src="','">']):
+def get_replace_delimiters_wrapper(new_delims, original_delims=['![[',']]']):
     def apply_to_texts(agg, text, _, __):
         indices = extract_delimited_text(text,
+            end=None,
             delims=original_delims,
             apply_to_texts=lambda agg,_,i,j: agg.append((i,j)))
 
         previous_index = 0
+        add_text = ""
         for start, close in indices:
-            agg.append(text[previous_index:start]
-                + new_delims[0]
-                + text[(start+len(original_delims[0])):close]
-                + new_delims[1])
+            add_text += text[previous_index:start]
+            add_text += new_delims[0]
+            add_text += text[(start+len(original_delims[0])):close]
+            add_text += new_delims[1]
             previous_index = close+len(original_delims[1])
+        add_text += text[previous_index:]
+        agg.append(add_text)
         return agg
 
     return apply_to_texts
@@ -183,18 +186,20 @@ class deck_builder():
     def __init__(self):
         self.deck = None
         self.notes = []
+        self.media_files = []
         self.model = genanki.Model(
             1607392319,
             'Simple Model',
             fields=[
                 {'name': 'Question'},
                 {'name': 'Answer'},
+                {'name': 'MyMedia'},
             ],
             templates=[
                 {
                     'name': 'Card 1',
                     'qfmt': '{{Question}}',
-                    'afmt': '{{FrontSide}}<hr id="answer">{{Answer}}',
+                    'afmt': '{{FrontSide}}<hr id="answer">{{Answer}}<br>{{MyMedia}}',
                 },
             ])
     def build_deck(self, deck_id=None, deck_name='Unnamed'):
@@ -204,21 +209,33 @@ class deck_builder():
         for note in self.notes:
             self.deck.add_note(note)
         return (deck_id,deck_name)
-    def add_note(self, question, answer):
-        note = genanki.Note(model=self.model, fields=[str(question),str(answer)])
+    def add_note(self, question, answer, media_file=None):
+        media = '' if media_file == None else '<img src="'+media_file+'">'
+        note = genanki.Note(model=self.model, fields=[str(question),str(answer), str(media)])
         self.notes.append(note)
+        if media_file is not None:
+            self.media_files.append(media_file)
         return self
-    def add_yaml(self, yml):
+    def add_yaml(self, yml, media_delims=['<<','>>']):
         try:
             for question,answer in yml.items():
-                self.add_note(question,answer)
+                media_file = extract_delimited_text(str(answer), delims=media_delims, end=None)
+                # TODO if multiple media files, I'll just put the first one. I'll figure out what to do later
+                if len(media_file) > 0:
+                    media_file = str(media_file[0])
+                else:
+                    media_file = None
+                self.add_note(question,answer,media_file)
             return self
         except:
             print(sys.exc_info(), yml)
     def write_to_file(self, fn):
         if len(fn) < 6 or fn[-5:] != '.apkg':
             fn += '.apkg'
-        genanki.Package(self.deck).write_to_file(fn)
+        package = genanki.Package(self.deck)
+        print("Adding media files: ",self.media_files)
+        package.media_files = self.media_files
+        package.write_to_file(fn)
 
 # Main Script Entry point
 if __name__ == '__main__':
