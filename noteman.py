@@ -8,9 +8,13 @@ import glob
 import genanki
 import random
 
-ignored_text = ['/br','br/']
+#ignored_text = ['/br','br/']
+ignored_text = []
 
-def extract_delimited_text(base_str, open_s='```open', close_s='```'):
+
+def extract_delimited_text(base_str, delims=['```open', '```'], apply_to_texts=lambda agg,x,_,__: agg.append(x)):
+    open_s = delims[0]
+    close_s = delims[1]
     extracted_texts = []
     num_unclosed_c = 0
     previous_index = 0
@@ -33,12 +37,36 @@ def extract_delimited_text(base_str, open_s='```open', close_s='```'):
                     if text not in ignored_text:
                         if text[-1] != '\n':
                             text += '\n'
-                        extracted_texts.append(text)
+                        # A reduce function
+                        apply_to_texts(extracted_texts,text, previous_index, ci)
                 if num_unclosed_c > 0:
                     num_unclosed_c -= 1
         except IndexError:
             pass
     return extracted_texts
+
+
+def extract_delimited_text_and_convert_media_links(base_str,
+        delims=['```open', '```'],
+        original_media_delims=['![[',']]'],
+        new_media_delims=['<img src="','">']):
+
+    def apply_to_texts(agg, text, _, __):
+        media_link_indices = extract_delimited_text(text,
+            delims=original_media_delims,
+            apply_to_texts=lambda agg,_,i,j: agg.append((i,j)))
+
+        previous_index = 0
+        for start, close in media_link_indices:
+            agg.append(text[previous_index:start]
+                + new_media_delims[0]
+                + text[(start+len(original_media_delims[0])):close]
+                + new_media_delims[1])
+        return agg
+
+    converted_text = extract_delimited_text(base_str, delims=delims, apply_to_texts=apply_to_texts)
+    return converted_text
+
 
 def unindent(s):
     indent = len(s)
@@ -67,7 +95,7 @@ class yaml_builder():
         self.extractor = extractor
         self.delims = delims
     def add_files(self,files):
-        for fn in files.split(' '):
+        for fn in files:
             self.add_file(fn)
         return self
     def add_file(self,fn):
@@ -77,7 +105,7 @@ class yaml_builder():
             print(sys.exc_info())
             print('Failed to open: ',fn)
             sys.exit(1)
-        for s in self.extractor(s, open_s=self.delims[0], close_s=self.delims[1]):
+        for s in self.extractor(s, delims=self.delims):
             self.yaml += unindent(s) + '\n'
         return self
     def build(self):
@@ -204,16 +232,16 @@ if __name__ == '__main__':
         file_path = None
 
     if len(args) == 0:
-        input_files = ' '.join(glob.glob('*.md'))
+        input_files = glob.glob('*.md')
     else:
-        input_files = ' '.join(args).strip()
+        input_files = args
 
     # Get the metadat
     md = metadata(yaml_builder(delims=['```metadata','```']).add_files(input_files).build().get_result())
     assert md is not None and md != {}, 'No metadata found!'
 
     # Build the flash cards yaml with metadata
-    yb = yaml_builder(delims=['```a','```']).add_files(input_files).build()
+    yb = yaml_builder(delims=['```a','```'], extractor=extract_delimited_text_and_convert_media_links).add_files(input_files).build()
     yml = yb.get_result()
 
     # Build tasks yaml
@@ -244,4 +272,4 @@ if __name__ == '__main__':
         db.write_to_file(fn)
         print(f"Successfully saved anki deck (id: {deck_id}, name: '{deck_name}') to file '{fn}'")
     else:
-        print(f"No anki deck defined in files.")
+        print("No anki deck defined in files.")
